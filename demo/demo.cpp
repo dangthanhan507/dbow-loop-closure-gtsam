@@ -23,16 +23,17 @@ using namespace std;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-void loadFeatures(vector<vector<cv::Mat > > &features);
+void loadFeatures(vector<vector<cv::Mat > > &features, std::string filepath, unsigned nimages);
 void changeStructure(const cv::Mat &plain, vector<cv::Mat> &out);
-void testVocCreation(const vector<vector<cv::Mat > > &features);
-void testDatabase(const vector<vector<cv::Mat > > &features);
+void testVocCreation(const vector<vector<cv::Mat > > &features, const int nimages_train);
+void testDatabase(const vector<vector<cv::Mat > > &features, const int nimages_eval);
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 // number of training images
-const int NIMAGES = 4;
+const int NIMAGES_TRAIN = 2000;
+const int NIMAGES_EVAL = 1000;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -47,36 +48,46 @@ void wait()
 int main()
 {
   vector<vector<cv::Mat > > features;
-  loadFeatures(features);
+  loadFeatures(features, "images2", NIMAGES_TRAIN);
 
-  testVocCreation(features);
+  testVocCreation(features, NIMAGES_TRAIN);
 
-  wait();
+  // wait();
+  vector<vector<cv::Mat > > features2;
+  loadFeatures(features2, "images3", NIMAGES_EVAL);
 
-  testDatabase(features);
+  testDatabase(features2, NIMAGES_EVAL);
 
   return 0;
 }
 
 // ----------------------------------------------------------------------------
 
-void loadFeatures(vector<vector<cv::Mat > > &features)
+void loadFeatures(vector<vector<cv::Mat > > &features, std::string filepath, unsigned nimages)
 {
   features.clear();
-  features.reserve(NIMAGES);
+  features.reserve(nimages);
 
   cv::Ptr<cv::ORB> orb = cv::ORB::create();
 
   cout << "Extracting ORB features..." << endl;
-  for(int i = 0; i < NIMAGES; ++i)
+  for(unsigned i = 0; i < nimages; ++i)
   {
     stringstream ss;
-    ss << "images/image" << i << ".png";
+    ss << filepath << "/" << "image" << i << ".jpg";
+    //print the image path
 
-    cv::Mat image = cv::imread(ss.str(), 0);
+    cv::Mat image = cv::imread(ss.str());
     cv::Mat mask;
     vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;
+
+    //check fi it loaded the image
+    if(image.empty())
+    {
+      cerr << "Couldn't read image: " << ss.str() << endl;
+      exit(1);
+    }
 
     orb->detectAndCompute(image, mask, keypoints, descriptors);
 
@@ -99,11 +110,11 @@ void changeStructure(const cv::Mat &plain, vector<cv::Mat> &out)
 
 // ----------------------------------------------------------------------------
 
-void testVocCreation(const vector<vector<cv::Mat > > &features)
+void testVocCreation(const vector<vector<cv::Mat > > &features, const int nimages_train)
 {
   // branching factor and depth levels 
-  const int k = 5;
-  const int L = 2;
+  const int k = 10;
+  const int L = 3;
   const WeightingType weight = TF_IDF;
   const ScoringType scoring = L1_NORM;
 
@@ -119,15 +130,15 @@ void testVocCreation(const vector<vector<cv::Mat > > &features)
   // lets do something with this vocabulary
   cout << "Matching images against themselves (0 low, 1 high): " << endl;
   BowVector v1, v2;
-  for(int i = 0; i < NIMAGES; i++)
+  for(int i = 0; i < nimages_train; i++)
   {
     voc.transform(features[i], v1);
-    for(int j = 0; j < NIMAGES; j++)
+    for(int j = 0; j < nimages_train; j++)
     {
       voc.transform(features[j], v2);
       
       double score = voc.score(v1, v2);
-      cout << "Image " << i << " vs Image " << j << ": " << score << endl;
+      cout << "Train_Matrix: " << i << " " << j << " " << score << endl;
     }
   }
 
@@ -139,7 +150,7 @@ void testVocCreation(const vector<vector<cv::Mat > > &features)
 
 // ----------------------------------------------------------------------------
 
-void testDatabase(const vector<vector<cv::Mat > > &features)
+void testDatabase(const vector<vector<cv::Mat > > &features, const int nimages_eval)
 {
   cout << "Creating a small database..." << endl;
 
@@ -153,7 +164,7 @@ void testDatabase(const vector<vector<cv::Mat > > &features)
   // db creates a copy of the vocabulary, we may get rid of "voc" now
 
   // add images to the database
-  for(int i = 0; i < NIMAGES; i++)
+  for(int i = 0; i < nimages_eval; i++)
   {
     db.add(features[i]);
   }
@@ -166,7 +177,7 @@ void testDatabase(const vector<vector<cv::Mat > > &features)
   cout << "Querying the database: " << endl;
 
   QueryResults ret;
-  for(int i = 0; i < NIMAGES; i++)
+  for(int i = 0; i < nimages_eval; i++)
   {
     db.query(features[i], ret, 4);
 
@@ -191,5 +202,4 @@ void testDatabase(const vector<vector<cv::Mat > > &features)
 }
 
 // ----------------------------------------------------------------------------
-
 
