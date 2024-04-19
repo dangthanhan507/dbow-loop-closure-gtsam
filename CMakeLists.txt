@@ -50,6 +50,10 @@ if(BUILD_Demo)
   file(COPY demo/images DESTINATION ${CMAKE_BINARY_DIR}/)
   file(COPY demo/images2 DESTINATION ${CMAKE_BINARY_DIR}/)
   file(COPY demo/images3 DESTINATION ${CMAKE_BINARY_DIR}/)
+
+  add_executable(demo_eval demo/eval_vocab.cpp)
+  target_link_libraries(demo_eval ${PROJECT_NAME} ${OpenCV_LIBS})
+  set_target_properties(demo_eval PROPERTIES CXX_STANDARD 11)
 endif(BUILD_Demo)
 
 configure_file(src/DBoW2.cmake.in
